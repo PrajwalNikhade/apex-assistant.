@@ -1,0 +1,32 @@
+{
+  "name": "humfou-email-assistant",
+  "version": "1.0.0",
+  "description": "Personal Assistant – AI-Powered Email Management Dashboard Prototype",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server/index.js",
+    "client": "npm run --prefix client dev",
+    "build": "npm run --prefix client build",
+    "start": "node server/index.js"
+  },
+  "keywords": [
+    "email",
+    "ai",
+    "assistant",
+    "triage",
+    "executive-assistant",
+    "dashboard"
+  ],
+  "author": "Full-Stack AI Engineer Candidate",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
