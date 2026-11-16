@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/', (req, res) => {
   try {
     const filters = {
+      clientId: req.query.clientId,
       accountId: req.query.accountId,
       category: req.query.category,
       isRead: req.query.isRead,

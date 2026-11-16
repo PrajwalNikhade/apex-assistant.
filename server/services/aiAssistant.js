@@ -1,44 +1,108 @@
 /**
  * AI Assistant Service
  * Provides:
- * 1. Natural Language Email Q&A Copilot
+ * 1. Natural Language Email Q&A Copilot (with optional live Groq API integration & instant heuristic engine)
  * 2. Smart Multi-Tone Reply Generator
  */
 
-export function askCopilot(query, { emails = [], activeEmail = null, persona = 'assistant' }) {
+export async function askCopilot(query, { emails = [], activeEmail = null, persona = 'assistant', apiKey = '' }) {
   const q = (query || '').toLowerCase().trim();
 
+  // If user provided a Groq API key (or process.env.GROQ_API_KEY is available), we can optionally use live LLM
+  const effectiveApiKey = apiKey || process.env.GROQ_API_KEY;
+
+  if (effectiveApiKey) {
+    try {
+      const emailSummaries = emails.slice(0, 10).map((e, i) => 
+        `[${i + 1}] ID: ${e.id} | From: ${e.sender.name} (${e.sender.email}) | Subject: ${e.subject} | Category: ${e.classification?.category} (${Math.round((e.classification?.confidence || 0.9) * 100)}%) | Snippet: ${e.snippet} | Reason: ${e.classification?.reason}`
+      ).join('\n');
+
+      const systemPrompt = `You are an intelligent executive email assistant helping Sarah Jenkins manage executive inboxes.
+Here are the current emails in the client's inbox:
+${emailSummaries}
+
+Active email selected: ${activeEmail ? `${activeEmail.subject} from ${activeEmail.sender.name}` : 'None'}
+
+Answer the assistant's question concisely, professionally, and clearly. Highlight which emails need attention and who should reply (Assistant vs Client). Format with Markdown.`;
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${effectiveApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: query }
+          ],
+          temperature: 0.3,
+          max_tokens: 500
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          // Find matching email IDs
+          const matchedIds = emails.filter(e => content.toLowerCase().includes(e.subject.toLowerCase().slice(0, 20))).map(e => e.id);
+          return {
+            answer: content,
+            relevantEmailIds: matchedIds.length > 0 ? matchedIds : (activeEmail ? [activeEmail.id] : []),
+            suggestedFollowUps: [
+              'Draft reply for the highest priority email',
+              'Show emails assigned to assistant',
+              'What am I waiting on?'
+            ],
+            modelUsed: 'Groq Llama-3.1 (Live LLM)'
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Groq API call fallback to built-in intelligence:', err.message);
+    }
+  }
+
+  // Built-in intelligent context engine (zero-latency, reliable, 100% offline)
+  return runBuiltInCopilot(q, { emails, activeEmail, persona });
+}
+
+function runBuiltInCopilot(q, { emails = [], activeEmail = null, persona = 'assistant' }) {
   // 1. Client attention query
-  if (q.includes('client') || q.includes('alexander') || q.includes('alex')) {
+  if (q.includes('client') || q.includes('alexander') || q.includes('sophia') || q.includes('founder') || q.includes('partner')) {
     const clientEmails = emails.filter(e => e.classification?.category === 'client_reply' && !e.isHandled);
     return {
-      answer: `There are currently **${clientEmails.length} email(s)** requiring Alexander's personal attention:
+      answer: `There are currently **${clientEmails.length} email(s)** requiring the client's direct personal decision:
 ${clientEmails.map((e, i) => `${i + 1}. **${e.sender.name}** (${e.sender.company || 'External'}): *${e.subject}* — ${e.classification.reason}`).join('\n')}
 
-Would you like me to prepare an executive summary packet or draft initial notes for Alexander?`,
+Would you like me to prepare an executive summary packet or draft initial notes for the client?`,
       relevantEmailIds: clientEmails.map(e => e.id),
       suggestedFollowUps: [
-        'Summarize the top priority email for Alexander',
+        'Summarize the top priority email for the client',
         'Prepare delegation briefing',
         'Show emails assigned to me (Assistant)'
-      ]
+      ],
+      modelUsed: 'Apex Neural Triage Engine'
     };
   }
 
   // 2. Assistant attention query
-  if (q.includes('my attention') || q.includes('assigned to me') || q.includes('assistant to reply')) {
+  if (q.includes('my attention') || q.includes('assigned to me') || q.includes('assistant to reply') || q.includes('sarah')) {
     const assistantEmails = emails.filter(e => e.classification?.category === 'assistant_reply' && !e.isHandled);
     return {
       answer: `You have **${assistantEmails.length} pending task(s)** assigned to you as Executive Assistant:
 ${assistantEmails.map((e, i) => `${i + 1}. **${e.sender.name}**: *${e.subject}* (Suggested action: ${e.classification.suggestedAction})`).join('\n')}
 
-High priority items include Bloomberg executive dinner rescheduling and the Salesforce annual renewal.`,
+High priority items include dinner rescheduling, vendor renewal paperwork, and speaking engagement holds.`,
       relevantEmailIds: assistantEmails.map(e => e.id),
       suggestedFollowUps: [
         'Draft reply for the Bloomberg reschedule',
         'Check upcoming meetings this week',
         'What needs urgent action?'
-      ]
+      ],
+      modelUsed: 'Apex Neural Triage Engine'
     };
   }
 
@@ -49,18 +113,20 @@ High priority items include Bloomberg executive dinner rescheduling and the Sale
       answer: `Here are the key threads where responses or approvals are pending:
 1. **Series B Term Sheet Revisions**: Waiting on Alexander’s final collar approval ($120M–$140M post) for Marcus Vance at Valkyrie Capital.
 2. **VP of Product Compensation**: Waiting on Alexander’s green light for David Lin’s $320k + 1.25% equity offer.
-3. **Bloomberg Dinner Reschedule**: Sarah to confirm 8:30 PM slot with Claire Holloway.`,
+3. **Bloomberg Dinner Reschedule**: Sarah to confirm 8:30 PM slot with Claire Holloway.
+4. **Series A Lead Term Sheet**: Waiting on Dr. Sophia Chen’s sign-off on NeuroGenomics option pool.`,
       relevantEmailIds: waitingEmails.map(e => e.id),
       suggestedFollowUps: [
         'Send a gentle nudge to the client',
         'Show flagged low-confidence classifications',
         'Draft a quick reply to Marcus Vance'
-      ]
+      ],
+      modelUsed: 'Apex Neural Triage Engine'
     };
   }
 
   // 4. Summarize active or specific email
-  if (q.includes('summarize') || q.includes('summary')) {
+  if (q.includes('summarize') || q.includes('summary') || q.includes('tell me about')) {
     if (activeEmail) {
       return {
         answer: `### Summary of "${activeEmail.subject}"
@@ -78,7 +144,8 @@ ${(activeEmail.aiSummary?.keyTakeaways || []).map(t => `- ${t}`).join('\n')}
           `Draft a reply to ${activeEmail.sender.name}`,
           'Reclassify this email',
           'Extract action items'
-        ]
+        ],
+        modelUsed: 'Apex Neural Triage Engine'
       };
     } else {
       const urgent = emails.find(e => e.priority === 'urgent');
@@ -88,7 +155,8 @@ ${(activeEmail.aiSummary?.keyTakeaways || []).map(t => `- ${t}`).join('\n')}
         suggestedFollowUps: [
           'Show me emails requiring client approval',
           'Show meetings scheduled for this week'
-        ]
+        ],
+        modelUsed: 'Apex Neural Triage Engine'
       };
     }
   }
@@ -112,13 +180,14 @@ You can manually override this classification at any time using the classificati
           'Reclassify as Assistant to Reply',
           'Reclassify as Client to Reply',
           'Mark as Handled'
-        ]
+        ],
+        modelUsed: 'Apex Neural Triage Engine'
       };
     }
   }
 
   // 6. Upcoming meetings
-  if (q.includes('meeting') || q.includes('calendar') || q.includes('appointment') || q.includes('schedule')) {
+  if (q.includes('meeting') || q.includes('calendar') || q.includes('appointment') || q.includes('schedule') || q.includes('dinner')) {
     const meetingEmails = emails.filter(e => !!e.extractedMeeting);
     return {
       answer: `Found **${meetingEmails.length} upcoming meetings or event requests** across the inboxes:
@@ -127,13 +196,14 @@ ${meetingEmails.map(e => `• **${e.extractedMeeting.title}**
   - Location: ${e.extractedMeeting.location}
   - Status: ${e.extractedMeeting.status.replace('_', ' ')}`).join('\n\n')}
 
-All times have been cross-checked against Alexander's main calendar.`,
+All times have been cross-checked against client calendars.`,
       relevantEmailIds: meetingEmails.map(e => e.id),
       suggestedFollowUps: [
         'Reschedule Bloomberg dinner to 8:30 PM',
         'Confirm Global AI Summit hold',
         'Show all urgent emails'
-      ]
+      ],
+      modelUsed: 'Apex Neural Triage Engine'
     };
   }
 
@@ -142,7 +212,7 @@ All times have been cross-checked against Alexander's main calendar.`,
     answer: `I am your AI Email Co-Pilot. I monitor all connected client accounts, automatically categorize reply responsibility, extract action items, and draft contextual replies.
 
 You can ask me:
-- *"Show me emails that need Alexander's attention"*
+- *"Which emails require the client's attention?"*
 - *"What tasks are assigned to me today?"*
 - *"What are we waiting on?"*
 - *"Summarize the latest term sheet updates"*
@@ -152,7 +222,8 @@ You can ask me:
       'Show emails requiring client attention',
       'Show emails assigned to assistant',
       'What am I waiting for a response on?'
-    ]
+    ],
+    modelUsed: 'Apex Neural Triage Engine'
   };
 }
 
@@ -162,7 +233,6 @@ export function generateSmartReply({ email, tone = 'professional', customInstruc
   const sender = email.sender.name || 'there';
   const subject = email.subject || '';
 
-  // Tailored intelligent templates based on context and tone
   if (subject.includes('Bloomberg') || subject.includes('Reschedule')) {
     if (tone === 'concise') {
       return {
@@ -215,10 +285,16 @@ export function generateSmartReply({ email, tone = 'professional', customInstruc
     };
   }
 
-  // Generic fallback with custom instructions support
+  if (subject.includes('NeuroGenomics') || subject.includes('Series A Lead')) {
+    return {
+      tone,
+      draft: `Dear Dr. Bradley,\n\nThank you for the update. BioVentures Capital is honored to lead the Series A round for NeuroGenomics at the agreed $18M pre-money valuation.\n\nI have reviewed the 20% option pool allocation and am approving the term sheet. My office will coordinate with legal counsel for final signature execution.\n\nWarm regards,\nDr. Sophia Chen\nManaging Partner, BioVentures Capital`
+    };
+  }
+
   const instructionPart = customInstructions ? ` regarding "${customInstructions}"` : '';
   return {
     tone,
-    draft: `Hi ${sender},\n\nThank you for your message${instructionPart}. We have received your note regarding "${subject}" and are reviewing it.\n\nWe will follow up with further details shortly.\n\nBest regards,\nSarah Jenkins\nOffice of Alexander Wright`
+    draft: `Hi ${sender},\n\nThank you for your message${instructionPart}. We have received your note regarding "${subject}" and are reviewing it.\n\nWe will follow up with further details shortly.\n\nBest regards,\nSarah Jenkins\nOffice of the Executive`
   };
 }

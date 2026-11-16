@@ -6,16 +6,16 @@ import { datastore } from '../data/datastore.js';
 const router = express.Router();
 
 // POST ask Copilot
-router.post('/ask', (req, res) => {
+router.post('/ask', async (req, res) => {
   try {
-    const { query, emailId, persona } = req.body;
+    const { query, emailId, persona, apiKey } = req.body;
     if (!query) {
       return res.status(400).json({ success: false, error: 'Query is required' });
     }
     const emails = datastore.getEmails();
     const activeEmail = emailId ? datastore.getEmailById(emailId) : null;
 
-    const response = askCopilot(query, { emails, activeEmail, persona });
+    const response = await askCopilot(query, { emails, activeEmail, persona, apiKey });
     res.json({ success: true, ...response });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

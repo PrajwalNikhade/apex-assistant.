@@ -17,13 +17,23 @@ export function EmailProvider({ children }) {
     starred: 0
   });
   const [accounts, setAccounts] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedClientId, setSelectedClientId] = useState('all');
   const [selectedAccountId, setSelectedAccountId] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmail, setSelectedEmail] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [groqApiKey, setGroqApiKeyState] = useState(() => localStorage.getItem('groq_api_key') || '');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const setGroqApiKey = (key) => {
+    setGroqApiKeyState(key);
+    if (key) localStorage.setItem('groq_api_key', key);
+    else localStorage.removeItem('groq_api_key');
+  };
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type, id: Date.now() });
@@ -35,37 +45,51 @@ export function EmailProvider({ children }) {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [emailRes, statsRes, accRes] = await Promise.all([
+      const [emailRes, statsRes, accRes, clientRes, notifRes] = await Promise.all([
         api.fetchEmails({
+          clientId: selectedClientId,
           accountId: selectedAccountId,
           category: selectedCategory,
           search: searchQuery
         }),
-        api.fetchStats(selectedAccountId),
-        api.fetchAccounts()
+        api.fetchStats({
+          clientId: selectedClientId,
+          accountId: selectedAccountId
+        }),
+        api.fetchAccounts(),
+        api.fetchClients(),
+        api.fetchNotifications()
       ]);
 
       if (emailRes.success) setEmails(emailRes.emails);
       if (statsRes.success) setStats(statsRes.stats);
       if (accRes.success) setAccounts(accRes.accounts);
+      if (clientRes.success) setClients(clientRes.clients);
+      if (notifRes.success) setNotifications(notifRes.notifications);
     } catch (err) {
       console.error('Failed to load email data:', err);
       showToast('Error connecting to server. Retrying...', 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedAccountId, selectedCategory, searchQuery, showToast]);
+  }, [selectedClientId, selectedAccountId, selectedCategory, searchQuery, showToast]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const refreshStats = useCallback(async () => {
-    const statsRes = await api.fetchStats(selectedAccountId);
+    const [statsRes, accRes, notifRes, clientRes] = await Promise.all([
+      api.fetchStats({ clientId: selectedClientId, accountId: selectedAccountId }),
+      api.fetchAccounts(),
+      api.fetchNotifications(),
+      api.fetchClients()
+    ]);
     if (statsRes.success) setStats(statsRes.stats);
-    const accRes = await api.fetchAccounts();
     if (accRes.success) setAccounts(accRes.accounts);
-  }, [selectedAccountId]);
+    if (notifRes.success) setNotifications(notifRes.notifications);
+    if (clientRes.success) setClients(clientRes.clients);
+  }, [selectedClientId, selectedAccountId]);
 
   const handleSelectEmail = useCallback(async (email) => {
     if (!email) {
@@ -73,7 +97,6 @@ export function EmailProvider({ children }) {
       return;
     }
     setSelectedEmail(email);
-    // Mark read optimistically if unread
     if (!email.isRead) {
       setEmails(prev => prev.map(e => e.id === email.id ? { ...e, isRead: true } : e));
       await api.updateStatus(email.id, { isRead: true });
@@ -175,6 +198,17 @@ export function EmailProvider({ children }) {
     }
   }, [refreshStats, showToast]);
 
+  const handleMarkNotificationRead = async (id = 'all') => {
+    try {
+      const res = await api.markNotificationRead(id);
+      if (res.success) {
+        setNotifications(res.notifications);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleResetData = useCallback(async () => {
     await api.resetData();
     await loadData();
@@ -188,6 +222,9 @@ export function EmailProvider({ children }) {
         emails,
         stats,
         accounts,
+        clients,
+        selectedClientId,
+        setSelectedClientId,
         selectedAccountId,
         setSelectedAccountId,
         selectedCategory,
@@ -196,6 +233,10 @@ export function EmailProvider({ children }) {
         setSearchQuery,
         selectedEmail,
         setSelectedEmail,
+        notifications,
+        handleMarkNotificationRead,
+        groqApiKey,
+        setGroqApiKey,
         isLoading,
         isSyncing,
         toast,

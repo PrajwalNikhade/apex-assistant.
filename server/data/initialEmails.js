@@ -731,5 +731,153 @@ SkyMiles: #9482710398
 Sky Club access is available at JFK T4.`
       }
     ]
+  },
+
+  {
+    id: 'em-111',
+    accountId: 'acc-3',
+    accountEmail: 'sophia.chen@bioventures.com',
+    subject: 'Series A Lead Term Sheet & Board Representation — NeuroGenomics Inc.',
+    snippet: 'Dr. Chen, our board convened and agreed to the $18M pre-money valuation with BioVentures as the lead investor. We require your sign-off on the 20% option pool allocation...',
+    sender: {
+      name: 'Dr. Ethan Bradley',
+      email: 'e.bradley@neurogenomics.bio',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      role: 'CEO & Co-Founder',
+      company: 'NeuroGenomics Inc.'
+    },
+    recipients: [
+      { name: 'Dr. Sophia Chen', email: 'sophia.chen@bioventures.com' },
+      { name: 'Sarah Jenkins', email: 'sarah.jenkins@apexholdings.com' }
+    ],
+    receivedAt: hoursAgo(3),
+    isRead: false,
+    isStarred: true,
+    isArchived: false,
+    isHandled: false,
+    tags: ['BioVentures', 'Lead Investment', 'Approvals'],
+    priority: 'urgent',
+    classification: {
+      category: 'client_reply',
+      confidence: 0.97,
+      reason: 'Lead Series A venture investment term sheet and board seat appointment requires Managing Partner Dr. Chen direct signature.',
+      suggestedAction: 'Review ESOP pool dilution clause and execute term sheet countersignature before syndicate deadline.',
+      needsReview: false,
+      originalCategory: 'client_reply',
+      overriddenBy: null,
+      overriddenAt: null
+    },
+    aiSummary: {
+      tldr: 'Dr. Ethan Bradley accepted BioVentures as lead investor for NeuroGenomics Series A ($8M check at $18M pre) and requests Sophia’s sign-off on the 20% ESOP pool clause.',
+      keyTakeaways: [
+        'BioVentures leading with an $8M check out of $12M round.',
+        'Board seat granted to Dr. Sophia Chen.',
+        'ESOP option pool fixed at 20% unallocated pre-money.'
+      ],
+      actionItems: [
+        { text: 'Review ESOP expansion impact in cap table model', completed: false, assignee: 'client' },
+        { text: 'Execute lead term sheet signature page', completed: false, assignee: 'client' }
+      ],
+      urgency: 'urgent',
+      sentiment: 'positive'
+    },
+    extractedMeeting: null,
+    messages: [
+      {
+        id: 'msg-111-1',
+        senderName: 'Dr. Ethan Bradley',
+        senderEmail: 'e.bradley@neurogenomics.bio',
+        receivedAt: hoursAgo(3),
+        body: `Dear Sophia,
+
+Delighted to inform you that our board of directors unanimously selected BioVentures Capital as the lead investor for our Series A financing.
+
+Attached is the revised term sheet reflecting the $18M pre-money valuation and the dedicated board seat for you. We need your written concurrence on Section 4.2 regarding the 20% unallocated option pool before our syndicate call tomorrow.
+
+Looking forward to building the future of gene therapy together.
+
+Warm regards,
+Ethan Bradley, MD/PhD
+CEO, NeuroGenomics Inc.`
+      }
+    ]
+  },
+
+  {
+    id: 'em-112',
+    accountId: 'acc-3',
+    accountEmail: 'sophia.chen@bioventures.com',
+    subject: 'Boston Biotech Executive Dinner — Table for 4 Confirmed at Contessa',
+    snippet: 'Hi Sarah, confirming Dr. Chen’s dinner reservation at Contessa Boston next Wednesday, Nov 19 at 7:30 PM with Flagship Pioneering partners...',
+    sender: {
+      name: 'Contessa Concierge',
+      email: 'reservations@contessaboston.com',
+      avatar: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150&auto=format&fit=crop&q=80',
+      role: 'VIP Reservations Desk',
+      company: 'Contessa Boston'
+    },
+    recipients: [
+      { name: 'Dr. Sophia Chen', email: 'sophia.chen@bioventures.com' },
+      { name: 'Sarah Jenkins', email: 'sarah.jenkins@apexholdings.com' }
+    ],
+    receivedAt: hoursAgo(5),
+    isRead: true,
+    isStarred: false,
+    isArchived: false,
+    isHandled: false,
+    tags: ['Dining', 'Calendar', 'Boston'],
+    priority: 'normal',
+    classification: {
+      category: 'assistant_reply',
+      confidence: 0.96,
+      reason: 'Routine VIP dinner reservation confirmation and dining coordination suitable for the Executive Assistant.',
+      suggestedAction: 'Calendar invite confirmed. Verify dietary restrictions for Flagship guests with Sarah.',
+      needsReview: false,
+      originalCategory: 'assistant_reply',
+      overriddenBy: null,
+      overriddenAt: null
+    },
+    aiSummary: {
+      tldr: 'Confirmed private table for 4 for Dr. Sophia Chen at Contessa Boston next Wednesday at 7:30 PM.',
+      keyTakeaways: [
+        'Date: Wednesday, Nov 19, 2026 at 7:30 PM EST.',
+        'Location: Contessa Rooftop (Newbury Hotel, Boston).',
+        'Guests: 2 Managing Partners from Flagship Pioneering.'
+      ],
+      actionItems: [
+        { text: 'Add Contessa reservation to Sophia’s travel calendar', completed: true, assignee: 'assistant' }
+      ],
+      urgency: 'low',
+      sentiment: 'neutral'
+    },
+    extractedMeeting: {
+      title: 'Biotech Executive Dinner with Flagship Partners',
+      date: 'Wednesday, Nov 19, 2026',
+      time: '7:30 PM - 9:30 PM EST',
+      location: 'Contessa Rooftop (The Newbury Boston, 3 Newbury St)',
+      attendees: ['Dr. Sophia Chen', 'Flagship Pioneering Partners'],
+      status: 'confirmed'
+    },
+    messages: [
+      {
+        id: 'msg-112-1',
+        senderName: 'Contessa Concierge',
+        senderEmail: 'reservations@contessaboston.com',
+        receivedAt: hoursAgo(5),
+        body: `Dear Sarah,
+
+We are pleased to confirm Dr. Sophia Chen's reservation:
+
+Party Size: 4 Guests
+Date: Wednesday, November 19, 2026
+Time: 7:30 PM
+Seating: Glass Rooftop Conservatory (Table 14)
+
+Please let us know if any special dietary preferences or wine cellar requests should be pre-arranged.
+
+Warm regards,
+Contessa Concierge Team`
+      }
+    ]
   }
 ];

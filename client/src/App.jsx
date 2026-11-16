@@ -8,6 +8,7 @@ import ConnectAccountModal from './components/Onboarding/ConnectAccountModal.jsx
 import SimulateIncomingModal from './components/AICopilot/SimulateIncomingModal.jsx';
 import AIChatDrawer from './components/AICopilot/AIChatDrawer.jsx';
 import OnboardingTour from './components/Onboarding/OnboardingTour.jsx';
+import SettingsModal from './components/common/SettingsModal.jsx';
 import Toast from './components/common/Toast.jsx';
 
 function MainApp() {
@@ -16,6 +17,7 @@ function MainApp() {
   const [isSimulateOpen, setIsSimulateOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -25,12 +27,13 @@ function MainApp() {
         onOpenSimulate={() => setIsSimulateOpen(true)}
         onOpenAIChat={() => setIsAIChatOpen(true)}
         onOpenTour={() => setIsTourOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Main View Router: Assistant vs Client */}
       <main className="flex-1 pb-16">
         {viewMode === 'assistant' ? (
-          <AssistantDashboard />
+          <AssistantDashboard onOpenAIChat={() => setIsAIChatOpen(true)} />
         ) : (
           <ClientDashboard />
         )}
@@ -55,6 +58,11 @@ function MainApp() {
       <OnboardingTour
         isOpen={isTourOpen}
         onClose={() => setIsTourOpen(false)}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
 
       {/* Global Notifications */}

@@ -1,11 +1,65 @@
 import { initialEmails } from './initialEmails.js';
-import { initialAccounts } from './accounts.js';
+import { initialAccounts, initialClients } from './accounts.js';
 
 class DataStore {
   constructor() {
     this.emails = JSON.parse(JSON.stringify(initialEmails));
     this.accounts = JSON.parse(JSON.stringify(initialAccounts));
-    this.syncHistory = [];
+    this.clients = JSON.parse(JSON.stringify(initialClients));
+    this.notifications = [
+      {
+        id: 'notif-1',
+        title: 'High-Stakes Decision Flagged',
+        message: 'AI classified Series B Term Sheet Revisions as Client to Reply (98% confidence).',
+        timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+        read: false,
+        type: 'client_reply',
+        emailId: 'em-101'
+      },
+      {
+        id: 'notif-2',
+        title: 'Meeting Reschedule Requested',
+        message: 'Claire Holloway requested shifting executive dinner from 7:00 PM to 8:30 PM.',
+        timestamp: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+        read: false,
+        type: 'meeting',
+        emailId: 'em-102'
+      },
+      {
+        id: 'notif-3',
+        title: 'Client Delegated Task',
+        message: 'Alexander delegated Valkyrie Term Sheet to Sarah Jenkins: "Negotiate collar up to $130M".',
+        timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        read: true,
+        type: 'delegated',
+        emailId: 'em-101'
+      },
+      {
+        id: 'notif-4',
+        title: 'New Lead Investment Term Sheet',
+        message: 'NeuroGenomics accepted Dr. Sophia Chen as lead investor for Series A round.',
+        timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+        read: false,
+        type: 'client_reply',
+        emailId: 'em-111'
+      }
+    ];
+  }
+
+  getClients() {
+    return this.clients.map(client => {
+      const clientAccountIds = this.accounts.filter(a => a.clientId === client.id).map(a => a.id);
+      const clientEmails = this.emails.filter(e => !e.isArchived && clientAccountIds.includes(e.accountId));
+      const unreadCount = clientEmails.filter(e => !e.isRead).length;
+      const clientActionCount = clientEmails.filter(e => e.classification?.category === 'client_reply' && !e.isHandled).length;
+      return {
+        ...client,
+        accountCount: clientAccountIds.length,
+        unreadCount,
+        clientActionCount,
+        totalEmails: clientEmails.length
+      };
+    });
   }
 
   getAccounts() {
@@ -27,6 +81,7 @@ class DataStore {
   addAccount(account) {
     const newAccount = {
       id: `acc-${Date.now()}`,
+      clientId: account.clientId || 'client-1',
       status: 'connected',
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString(),
@@ -43,7 +98,6 @@ class DataStore {
     const index = this.accounts.findIndex(a => a.id === id);
     if (index !== -1) {
       const removed = this.accounts.splice(index, 1)[0];
-      // Keep emails or mark disconnected
       return removed;
     }
     return null;
@@ -56,7 +110,6 @@ class DataStore {
       account.lastSyncedAt = new Date().toISOString();
       return account;
     }
-    // If id is 'all', sync all
     this.accounts.forEach(a => {
       a.syncStatus = 'synced';
       a.lastSyncedAt = new Date().toISOString();
@@ -64,8 +117,28 @@ class DataStore {
     return this.accounts;
   }
 
+  getNotifications() {
+    return this.notifications;
+  }
+
+  markNotificationRead(id) {
+    if (id === 'all') {
+      this.notifications.forEach(n => { n.read = true; });
+      return this.notifications;
+    }
+    const n = this.notifications.find(item => item.id === id);
+    if (n) n.read = true;
+    return this.notifications;
+  }
+
   getEmails(filters = {}) {
     let result = [...this.emails];
+
+    // Filter by client if specified
+    if (filters.clientId && filters.clientId !== 'all') {
+      const clientAccountIds = this.accounts.filter(a => a.clientId === filters.clientId).map(a => a.id);
+      result = result.filter(e => clientAccountIds.includes(e.accountId));
+    }
 
     if (filters.accountId && filters.accountId !== 'all') {
       result = result.filter(e => e.accountId === filters.accountId);
@@ -94,7 +167,6 @@ class DataStore {
     }
 
     if (filters.category !== 'archived') {
-      // By default exclude archived unless specifically requested
       result = result.filter(e => !e.isArchived);
     }
 
@@ -114,9 +186,7 @@ class DataStore {
       );
     }
 
-    // Sort by receivedAt descending
     result.sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt));
-
     return result;
   }
 
@@ -131,12 +201,23 @@ class DataStore {
     email.classification = {
       ...email.classification,
       category,
-      confidence: 1.0, // Human override gives 100% certainty
+      confidence: 1.0,
       reason: reason || `Manually reclassified as ${category.replace('_', ' ')} by ${overriddenBy || 'Assistant'}.`,
       needsReview: false,
       overriddenBy: overriddenBy || 'assistant',
       overriddenAt: new Date().toISOString()
     };
+
+    // Add notification
+    this.notifications.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'Classification Overridden',
+      message: `"${email.subject.slice(0, 40)}..." was reclassified as ${category.replace('_', ' ')}.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'override',
+      emailId: email.id
+    });
 
     return email;
   }
@@ -161,13 +242,24 @@ class DataStore {
       ...email.classification,
       category: 'assistant_reply',
       confidence: 1.0,
-      reason: `Delegated by Client (Alexander Wright) with instructions: "${clientNotes || 'Please handle this.'}"`,
+      reason: `Delegated by Client with instructions: "${clientNotes || 'Please handle this.'}"`,
       needsReview: false,
       overriddenBy: 'client',
       overriddenAt: new Date().toISOString()
     };
     email.clientNotes = clientNotes;
     email.delegatedToAssistant = true;
+
+    // Add notification for assistant
+    this.notifications.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'New Client Delegation',
+      message: `Client delegated "${email.subject.slice(0, 35)}..." with notes: "${clientNotes || 'Handle this'}"`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'delegated',
+      emailId: email.id
+    });
 
     return email;
   }
@@ -178,7 +270,7 @@ class DataStore {
 
     const newMsg = {
       id: `msg-${Date.now()}`,
-      senderName: senderName || 'Alexander Wright (via Sarah Jenkins)',
+      senderName: senderName || 'Sarah Jenkins (Executive Assistant)',
       senderEmail: senderEmail || 'sarah.jenkins@apexholdings.com',
       receivedAt: new Date().toISOString(),
       body: body
@@ -194,7 +286,6 @@ class DataStore {
       approved: true
     };
 
-    // Re-evaluate: since a reply was sent, classification can shift to waiting or resolved
     email.classification.reason = 'Response sent by Executive Assistant. Awaiting recipient follow-up.';
 
     return { email, message: newMsg };
@@ -240,13 +331,30 @@ class DataStore {
     };
 
     this.emails.unshift(newEmail);
+
+    this.notifications.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'New Inbound Email Classified',
+      message: `"${newEmail.subject.slice(0, 35)}..." classified as ${newEmail.classification.category.replace('_', ' ')} (${Math.round(newEmail.classification.confidence * 100)}%).`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: newEmail.classification.category,
+      emailId: newEmail.id
+    });
+
     return newEmail;
   }
 
-  getStats(accountId = 'all') {
+  getStats(filters = {}) {
     let pool = this.emails.filter(e => !e.isArchived);
-    if (accountId && accountId !== 'all') {
-      pool = pool.filter(e => e.accountId === accountId);
+
+    if (filters.clientId && filters.clientId !== 'all') {
+      const clientAccountIds = this.accounts.filter(a => a.clientId === filters.clientId).map(a => a.id);
+      pool = pool.filter(e => clientAccountIds.includes(e.accountId));
+    }
+
+    if (filters.accountId && filters.accountId !== 'all') {
+      pool = pool.filter(e => e.accountId === filters.accountId);
     }
 
     const total = pool.length;
@@ -272,11 +380,18 @@ class DataStore {
     };
   }
 
-  getMeetings(accountId = 'all') {
-    let pool = this.emails.filter(e => !!e.extractedMeeting);
-    if (accountId && accountId !== 'all') {
-      pool = pool.filter(e => e.accountId === accountId);
+  getMeetings(filters = {}) {
+    let pool = this.emails.filter(e => !e.isArchived && !!e.extractedMeeting);
+
+    if (filters.clientId && filters.clientId !== 'all') {
+      const clientAccountIds = this.accounts.filter(a => a.clientId === filters.clientId).map(a => a.id);
+      pool = pool.filter(e => clientAccountIds.includes(e.accountId));
     }
+
+    if (filters.accountId && filters.accountId !== 'all') {
+      pool = pool.filter(e => e.accountId === filters.accountId);
+    }
+
     return pool.map(e => ({
       emailId: e.id,
       subject: e.subject,
@@ -288,6 +403,7 @@ class DataStore {
   resetToInitial() {
     this.emails = JSON.parse(JSON.stringify(initialEmails));
     this.accounts = JSON.parse(JSON.stringify(initialAccounts));
+    this.clients = JSON.parse(JSON.stringify(initialClients));
     return true;
   }
 }

@@ -3,6 +3,7 @@ const API_BASE = '/api';
 export const api = {
   async fetchEmails(filters = {}) {
     const params = new URLSearchParams();
+    if (filters.clientId && filters.clientId !== 'all') params.append('clientId', filters.clientId);
     if (filters.accountId && filters.accountId !== 'all') params.append('accountId', filters.accountId);
     if (filters.category && filters.category !== 'all') params.append('category', filters.category);
     if (filters.isRead !== undefined) params.append('isRead', filters.isRead);
@@ -67,6 +68,11 @@ export const api = {
     return res.json();
   },
 
+  async fetchClients() {
+    const res = await fetch(`${API_BASE}/accounts/clients`);
+    return res.json();
+  },
+
   async connectAccount(data) {
     const res = await fetch(`${API_BASE}/accounts`, {
       method: 'POST',
@@ -90,21 +96,39 @@ export const api = {
     return res.json();
   },
 
-  async fetchStats(accountId = 'all') {
-    const res = await fetch(`${API_BASE}/stats?accountId=${accountId}`);
+  async fetchStats(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.accountId && filters.accountId !== 'all') params.append('accountId', filters.accountId);
+    if (filters.clientId && filters.clientId !== 'all') params.append('clientId', filters.clientId);
+    const res = await fetch(`${API_BASE}/stats?${params.toString()}`);
     return res.json();
   },
 
-  async fetchMeetings(accountId = 'all') {
-    const res = await fetch(`${API_BASE}/stats/meetings?accountId=${accountId}`);
+  async fetchMeetings(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.accountId && filters.accountId !== 'all') params.append('accountId', filters.accountId);
+    if (filters.clientId && filters.clientId !== 'all') params.append('clientId', filters.clientId);
+    const res = await fetch(`${API_BASE}/stats/meetings?${params.toString()}`);
     return res.json();
   },
 
-  async askAI(query, emailId = null, persona = 'assistant') {
+  async fetchNotifications() {
+    const res = await fetch(`${API_BASE}/stats/notifications`);
+    return res.json();
+  },
+
+  async markNotificationRead(id) {
+    const res = await fetch(`${API_BASE}/stats/notifications/${id}/read`, {
+      method: 'POST'
+    });
+    return res.json();
+  },
+
+  async askAI(query, emailId = null, persona = 'assistant', apiKey = '') {
     const res = await fetch(`${API_BASE}/ai/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, emailId, persona })
+      body: JSON.stringify({ query, emailId, persona, apiKey })
     });
     return res.json();
   },
